@@ -3,6 +3,7 @@ from gmusicapi import Mobileclient
 import fnmatch
 import os
 from mutagen.mp3 import MP3
+from mutagen.mp4 import MP4
 
 
 class Song:
@@ -25,8 +26,12 @@ def get_artist(id3_obj):
 
 
 #get the title of the mp3, or just the filename if the title doesn't exist
-def get_title(id3_obj):
-    return id3_obj["TIT2"].text[0]
+def get_title(id3_obj, default):
+    try:
+        return id3_obj["TIT2"].text[0]
+    except KeyError:
+        return default
+
 
 
 #return a clean-looking representation of a list (for logging)
@@ -65,7 +70,8 @@ def build_song_db(map_playlist):
                 continue
             try:
                 str_artist = get_artist(mp3)
-                str_title = get_title(mp3)
+                str_list = line.split("\\")
+                str_title = get_title(mp3, str_list[len(str_list) - 1])
             except KeyError:
                 print "skipping ",line,", it is missing artist/title data."
                 continue
@@ -108,7 +114,7 @@ def reload_playlists(mobileclient, song_db, map_playlist):
     #create new ones
     for playlist_name in map_playlist.keys():
         playlist_id = mobileclient.create_playlist(playlist_name)
-        mobileclient.add_songs_to_playlist(playlist_id, map(lambda song: song.id, filter(lambda song: playlist_name in song.tags, song_db.values())))
+        mobileclient.add_songs_to_playlist(playlist_id, map(lambda song: song.id, filter(lambda song: playlist_name in song.tags and song.id != "", song_db.values())))
         print "created new playlist: ",playlist_name
 
 print "##########################"
