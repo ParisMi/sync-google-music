@@ -24,6 +24,14 @@ def get_tags(id3_obj):
 def get_artist(id3_obj):
     return id3_obj["TPE1"].text[0]
 
+def get_artist_mp4(id3_obj):
+    return id3_obj['\xa9ART'][0]
+
+def get_title_mp4(id3_obj, default):
+    try:
+        return id3_obj["\xa9nam"][0]
+    except KeyError:
+        return default
 
 #get the title of the mp3, or just the filename if the title doesn't exist
 def get_title(id3_obj, default):
@@ -63,18 +71,30 @@ def build_song_db(map_playlist):
             line = file_playlist.readline().replace("\n","")
             if line == "": #if we are at an empty line, this signifies the end of the file. exit while loop
                 break
-            try:
-                mp3 = MP3(line)
-            except IOError:
-                print "skipping",line,"was not accessible. does it exist?"
-                continue
-            try:
-                str_artist = get_artist(mp3)
-                str_list = line.split("\\")
-                str_title = get_title(mp3, str_list[len(str_list) - 1])
-            except KeyError:
-                print "skipping ",line,", it is missing artist/title data."
-                continue
+            if("mp3" in line):
+                try:
+                    mp3 = MP3(line)
+                    str_artist = get_artist(mp3)
+                    str_list = line.split("\\")
+                    str_title = get_title(mp3, str_list[len(str_list) - 1])
+                except KeyError:
+                    print "skipping MP3 ",line,", it is missing artist/title data."
+                    continue
+                except IOError:
+                    print "skipping",line,"was not accessible. does it exist?"
+                    continue
+            if("m4a" in line or "mp4" in line):
+                try:
+                    mp4 = MP4(line)
+                    str_artist = get_artist_mp4(mp4)
+                    str_list = line.split("\\")
+                    str_title = get_title_mp4(mp4, str_list[len(str_list) - 1])
+                except KeyError:
+                    print "skipping MP4/4A ",line,", it is missing artist/title data."
+                    continue
+                except IOError:
+                    print "skipping",line,"was not accessible. does it exist?"
+                    continue
             try:
                 song = song_db[str_title + str_artist]
             except KeyError: #if song does not exist in db
@@ -86,7 +106,6 @@ def build_song_db(map_playlist):
                 song_db[str_title + str_artist] = song
             #add this playlist to the song's playlists
             song.tags.append(str_playlist_name)
-            print "loaded mp3 ", song.title,"to playlist",str_playlist_name
     return song_db
 
 #tries to match all songs in the local database with ones on google music
